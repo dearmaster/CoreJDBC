@@ -16,47 +16,6 @@ public class StatementExecutor {
         return instance;
     }
 
-    private class User {
-
-        private Integer id;
-        private String name;
-        private String gender;
-
-        public User(Integer id, String name, String gender) {
-            this.id = id;
-            this.name = name;
-            this.gender = gender;
-        }
-
-        public Integer getId() {
-            return id;
-        }
-        public void setId(Integer id) {
-            this.id = id;
-        }
-        public String getName() {
-            return name;
-        }
-        public void setName(String name) {
-            this.name = name;
-        }
-        public String getGender() {
-            return gender;
-        }
-        public void setGender(String gender) {
-            this.gender = gender;
-        }
-
-        @Override
-        public String toString() {
-            return "User{" +
-                    "id=" + id +
-                    ", name='" + name + '\'' +
-                    ", gender='" + gender + '\'' +
-                    '}';
-        }
-    }
-
     private static final String DDL_CREATE_TABLE = "create table jdbc_demo(id integer not null, name varchar(30) null, gender varchar(2))";
     private static final String DDL_DROP_TABLE = "drop table jdbc_demo";
     private static final String[] DML_INSERT_MOCK_UP_DATA = {
@@ -127,6 +86,47 @@ public class StatementExecutor {
 
     public void deleteData() {
         this.execute(DML_DELETE_DATA);
+    }
+
+    private class User {
+
+        private Integer id;
+        private String name;
+        private String gender;
+
+        public User(Integer id, String name, String gender) {
+            this.id = id;
+            this.name = name;
+            this.gender = gender;
+        }
+
+        public Integer getId() {
+            return id;
+        }
+        public void setId(Integer id) {
+            this.id = id;
+        }
+        public String getName() {
+            return name;
+        }
+        public void setName(String name) {
+            this.name = name;
+        }
+        public String getGender() {
+            return gender;
+        }
+        public void setGender(String gender) {
+            this.gender = gender;
+        }
+
+        @Override
+        public String toString() {
+            return "User{" +
+                    "id=" + id +
+                    ", name='" + name + '\'' +
+                    ", gender='" + gender + '\'' +
+                    '}';
+        }
     }
 
     public static void main(String[] args) {
