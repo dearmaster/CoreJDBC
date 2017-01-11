@@ -39,6 +39,17 @@ public class ConnectionManager {
         return conn;
     }
 
+    public static void closeConnection(Connection conn) {
+        if(null != conn) {
+            try {
+                conn.close();
+                System.out.println("Connection closed");
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     public static void main(String[] args) {
         Connection conn = getConnection();
         System.out.println(conn);
