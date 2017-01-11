@@ -17,7 +17,7 @@ public class StatementExecutor {
     }
 
     private static final String DDL_CREATE_TABLE = "create table jdbc_demo(id integer not null, name varchar(30) null, gender varchar(2))";
-    private static final String DDL_DROP_TABLE = "drop table jdbc_demo";
+    private static final String DDL_DROP_TABLE = "drop table if exists jdbc_demo";
     private static final String[] DML_INSERT_MOCK_UP_DATA = {
             "insert into jdbc_demo(id, name, gender) values (1, 'Lily', '女')",
             "insert into jdbc_demo(id, name, gender) values (2, 'Lucy', '女')",
