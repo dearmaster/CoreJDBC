@@ -2,17 +2,15 @@ package com.master.jdbc.transaction;
 
 import com.master.jdbc.ConnectionManager;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 
+/**
+ * Seems can't mock up the situation of transaction issues in java code,
+ * may need to demo in procedure
+ */
 public class Glance {
 
     private static final Glance instance = new Glance();
-    private static final int MAX_TRY = 1;
-    private boolean DEPOSIT_FINISH_FLAG = false;
-    private boolean WITHDRAW_FINISH_FLAG = false;
 
     private Glance() {
         Connection conn = ConnectionManager.getConnection();
@@ -25,7 +23,7 @@ public class Glance {
             while (rs.next()) {
                 System.out.println(rs.getInt(1) + ", " + rs.getString(2) + ", " + rs.getFloat(3));
             }
-            System.out.println("table created");
+            System.out.println("table jdbc_transaction created");
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
@@ -33,88 +31,18 @@ public class Glance {
         }
     }
 
-    public void display() {
-        Connection conn = ConnectionManager.getConnection();
+    public Float getBalanceByName(Connection conn, String name) {
+        PreparedStatement pstmt;
         try {
-            System.out.println(conn.getTransactionIsolation());
+            pstmt = conn.prepareStatement("select balance from jdbc_transaction where name = ?");
+            pstmt.setString(1, name);
+            ResultSet rs = pstmt.executeQuery();
+            rs.next();
+            return rs.getFloat(1);
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        try {
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("select * from jdbc_transaction");
-            while (rs.next()) {
-                System.out.println(rs.getInt(1) + ", " + rs.getString(2) + ", " + rs.getFloat(3));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            ConnectionManager.closeConnection(conn);
-        }
-    }
-
-    public void withdraw() {
-        Connection conn = ConnectionManager.getConnection();
-        System.out.println("connection retrieved - withdraw");
-        try {
-            conn.setAutoCommit(false);
-            conn.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        try {
-            Thread.sleep(10);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        try {
-            Statement stmt = conn.createStatement();
-            System.out.println("withdrawing....");
-            stmt.execute("update jdbc_transaction set balance = balance - 10");
-            try {
-                Thread.sleep(20);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            conn.commit();
-            System.out.println("withdrew 10....");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            ConnectionManager.closeConnection(conn);
-        }
-    }
-
-    public void deposit() {
-        Connection conn = ConnectionManager.getConnection();
-        System.out.println("connection retrieved - deposit");
-        try {
-            conn.setAutoCommit(false);
-            conn.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        try {
-            Thread.sleep(10);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        try {
-            Statement stmt = conn.createStatement();
-            System.out.println("depositing....");
-            stmt.execute("update jdbc_transaction set balance = balance + 10");
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            conn.commit();
-            System.out.println("deposited 10....");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            ConnectionManager.closeConnection(conn);
-        }
+        return null;
     }
 
     public static Glance getInstance() {
@@ -127,37 +55,105 @@ public class Glance {
     }
 
     private void process() {
-        Thread depositThread = new DepositThread();
-        Thread withdrawThread = new WithDrawThread();
+        Thread depositThread = new DepositThread("lily", new Float[] {10f, 10f, 10f, 10f, 10f});
+        Thread withdrawThread = new WithDrawThread("lily", new Float[] {10f, 10f, 10f, 10f, 10f});
         depositThread.start();
         withdrawThread.start();
-        while (!DEPOSIT_FINISH_FLAG && !WITHDRAW_FINISH_FLAG) {
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-        display();
     }
 
     class DepositThread extends Thread {
+
+        private String name;
+        private Float[] deals;
+
+        public DepositThread(String name, Float[] deals) {
+            this.name = name;
+            this.deals = deals;
+        }
+
         @Override
         public void run() {
-            for(int i=1; i<=MAX_TRY; i++) {
-                deposit();
+            Connection conn = ConnectionManager.getConnection();
+            PreparedStatement pstmt;
+            try {
+                Thread.sleep(200);
+                conn.setAutoCommit(false);
+                conn.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+                for(int i=0; i<deals.length; i++) {
+                    if(deals[i] == null)
+                        continue;
+                    //System.out.println("deposit operation " + (i + 1) + ": Before depositing " + deals[i] + ", the balance is " + getBalanceByName(conn, name));
+                    pstmt = conn.prepareStatement("update jdbc_transaction set balance = balance + ? where name = ?");
+                    pstmt.setFloat(1, deals[i]);
+                    pstmt.setString(2, name);
+                    pstmt.executeUpdate();
+                    System.out.println("deposit operation " + (i + 1) + ": After depositing " + deals[i] + ", the balance is " + getBalanceByName(conn, name));
+                    try {
+                        Thread.sleep(8);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    if(i == 2) {
+                        try {
+                            Thread.sleep(2000);
+                            System.out.println("--------------------");
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                conn.rollback();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } finally {
+                ConnectionManager.closeConnection(conn);
             }
-            DEPOSIT_FINISH_FLAG = true;
         }
     }
 
     class WithDrawThread extends Thread {
+
+        private String name;
+        private Float[] deals;
+
+        public WithDrawThread(String name, Float[] deals) {
+            this.name = name;
+            this.deals = deals;
+        }
+
         @Override
         public void run() {
-            for(int i=1; i<=MAX_TRY; i++) {
-                withdraw();
+            Connection conn = ConnectionManager.getConnection();
+            PreparedStatement pstmt;
+            try {
+                Thread.sleep(200);
+                conn.setAutoCommit(false);
+                conn.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+                for(int i=0; i<deals.length; i++) {
+                    if(deals[i] == null)
+                        continue;
+                    //System.out.println("withdraw operation " + (i + 1) + ": Before withdrawing " + deals[i] + ", the balance is " + getBalanceByName(conn, name));
+                    pstmt = conn.prepareStatement("update jdbc_transaction set balance = balance - ? where name = ?");
+                    pstmt.setFloat(1, deals[i]);
+                    pstmt.setString(2, name);
+                    pstmt.executeUpdate();
+                    System.out.println("withdraw operation " + (i + 1) + ": After withdrawing " + deals[i] + ", the balance is " + getBalanceByName(conn, name));
+                    try {
+                        Thread.sleep(2);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                conn.commit();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } finally {
+                ConnectionManager.closeConnection(conn);
             }
-            WITHDRAW_FINISH_FLAG = true;
         }
     }
 
